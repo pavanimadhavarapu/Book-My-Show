@@ -6,7 +6,6 @@ pipeline {
     }
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
-        DOCKER_IMAGE = 'pavanimadhavarapu/bookmyshow:latest'
         EKS_CLUSTER_NAME = 'my-cluster'
         AWS_REGION = 'ap-south-1'
     }
@@ -65,9 +64,9 @@ pipeline {
                     withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
                         sh '''
                         echo "Building Docker image..."
-                        docker build --no-cache -t $DOCKER_IMAGE -f bookmyshow-app/Dockerfile bookmyshow-app
+                        docker build --no-cache -t pavanimadhavarapu/bms:latest -f bookmyshow-app/Dockerfile bookmyshow-app
                         echo "Pushing Docker image..."
-                        docker push $DOCKER_IMAGE
+                        docker push pavanimadhavarapu/bms:latest
                         '''
                     }
                 }
