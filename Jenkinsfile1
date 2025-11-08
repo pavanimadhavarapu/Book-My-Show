@@ -73,30 +73,30 @@ pipeline {
                 }
             }
         }
-
-        stage('Deploy to EKS Cluster') {
+    stage('Deploy to EKS Cluster') {
             steps {
-                script {
-                    sh '''
-                    echo "Verifying AWS credentials..."
-                    aws sts get-caller-identity
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+                    script {
+                        sh '''
+                        echo "✅ Verifying AWS credentials..."
+                        aws sts get-caller-identity
 
-                    echo "Configuring kubectl for EKS cluster..."
-                    aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+                        echo "🔧 Configuring kubectl for EKS cluster..."
+                        aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
-                    echo "Deploying application to EKS..."
-                    kubectl apply -f deployment.yml
-                    kubectl apply -f service.yml
-                    sleep 20
-                    echo "Checking deployment status..."
-                    kubectl rollout status deployment/bms-deployment
-                    kubectl get svc bms-service
-                    '''
+                        echo "🚀 Deploying application to EKS..."
+                        kubectl apply -f deployment.yml
+                        kubectl apply -f service.yml
+
+                        echo "✅ Verifying deployment..."
+                        kubectl get pods
+                        kubectl get svc
+                        '''
+                    }
                 }
             }
         }
     }
-
     post {
         always {
             emailext attachLog: true,
