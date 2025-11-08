@@ -6,6 +6,9 @@ pipeline {
     }
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
+        DOCKER_IMAGE = 'pavanimadhavarapu/Book-My-Show:latest'
+        EKS_CLUSTER_NAME = 'my-cluster'
+        AWS_REGION = 'ap-south-1'
     }
     stages {
         stage('Clean Workspace') {
@@ -66,26 +69,7 @@ pipeline {
                 }
             }
         }
-        stage('Deploy to Container') {
-            steps {
-                sh ''' 
-                echo "Stopping and removing old container..."
-                docker stop bms || true
-                docker rm bms || true
-
-                echo "Running new container on port 3000..."
-                docker run -d --restart=always --name bms -p 3000:3000 pavanimadhavarapu/bookmyshow:latest
-
-                echo "Checking running containers..."
-                docker ps -a
-
-                echo "Fetching logs..."
-                sleep 5  # Give time for the app to start
-                docker logs bms
-                '''
-            }
-        }
-    }
+        
     post {
         always {
             emailext attachLog: true,
