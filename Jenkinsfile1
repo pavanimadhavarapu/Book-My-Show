@@ -6,7 +6,7 @@ pipeline {
     }
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
-        DOCKER_IMAGE = 'pavanimadhavarapu/Book-My-Show:latest'
+        DOCKER_IMAGE = 'pavanimadhavarapu/bookmyshow:latest'
         EKS_CLUSTER_NAME = 'my-cluster'
         AWS_REGION = 'ap-south-1'
     }
@@ -16,22 +16,26 @@ pipeline {
                 cleanWs()
             }
         }
+
         stage('Checkout from Git') {
             steps {
                 git branch: 'main', url: 'https://github.com/pavanimadhavarapu/Book-My-Show.git'
-                sh 'ls -la'  // Verify files after checkout
+                sh 'ls -la'
             }
         }
+
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonar-scanner') {
-                    sh ''' 
-                    $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=BMS \
-                    -Dsonar.projectKey=BMS 
+                withSonarQubeEnv('sonar-server') {
+                    sh '''
+                    $SCANNER_HOME/bin/sonar-scanner \
+                      -Dsonar.projectName=BMS \
+                      -Dsonar.projectKey=BMS
                     '''
                 }
             }
         }
+
         stage('Quality Gate') {
             steps {
                 script {
@@ -39,37 +43,38 @@ pipeline {
                 }
             }
         }
+
         stage('Install Dependencies') {
             steps {
                 sh '''
                 cd bookmyshow-app
-                ls -la  # Verify package.json exists
                 if [ -f package.json ]; then
-                    rm -rf node_modules package-lock.json  # Remove old dependencies
-                    npm install  # Install fresh dependencies
+                    rm -rf node_modules package-lock.json
+                    npm install
                 else
-                    echo "Error: package.json not found in bookmyshow-app!"
+                    echo "Error: package.json not found!"
                     exit 1
                 fi
                 '''
             }
         }
+
         stage('Docker Build & Push') {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh ''' 
+                        sh '''
                         echo "Building Docker image..."
-                        docker build --no-cache -t pavanimadhavarapu/bookmyshow:latest -f bookmyshow-app/Dockerfile bookmyshow-app
-
-                        echo "Pushing Docker image to registry..."
-                        docker push pavanimadhavarapu/bookmyshow:latest
+                        docker build --no-cache -t $DOCKER_IMAGE -f bookmyshow-app/Dockerfile bookmyshow-app
+                        echo "Pushing Docker image..."
+                        docker push $DOCKER_IMAGE
                         '''
                     }
                 }
             }
         }
-      stage('Deploy to EKS Cluster') {
+
+        stage('Deploy to EKS Cluster') {
             steps {
                 script {
                     sh '''
@@ -79,20 +84,19 @@ pipeline {
                     echo "Configuring kubectl for EKS cluster..."
                     aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
-                    echo "Verifying kubeconfig..."
-                    kubectl config view
-
                     echo "Deploying application to EKS..."
                     kubectl apply -f deployment.yml
                     kubectl apply -f service.yml
-
-                    echo "Verifying deployment..."
-                    kubectl get pods
-                    kubectl get svc
+                    sleep 20
+                    echo "Checking deployment status..."
+                    kubectl rollout status deployment/bms-deployment
+                    kubectl get svc bms-service
                     '''
                 }
             }
-        }   
+        }
+    }
+
     post {
         always {
             emailext attachLog: true,
