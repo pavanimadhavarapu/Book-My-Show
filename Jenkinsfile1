@@ -83,7 +83,7 @@ pipeline {
                         echo "🚀 Deploying application to EKS..."
                         kubectl apply -f deployment.yml
                         kubectl apply -f service.yml
-
+                        kubectl apply -f ingress.yml
                         echo "✅ Verifying deployment..."
                         kubectl get pods
                         kubectl get svc
